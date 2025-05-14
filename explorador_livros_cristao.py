@@ -73,38 +73,42 @@ profundidade = st.selectbox("Escolha a profundidade do conteúdo", [
     "Profunda (com base teológica sólida)"
 ])
 
+# Gerar Explicação
 if st.button('Gerar Explicação'):
     with st.spinner('Gerando explicação...'):
         prompt = prompt_template.format(capitulo=selected_topic, estilo=estilo, profundidade=profundidade)
         resposta = chat_model.invoke(prompt)
+        st.session_state['explicacao'] = resposta.content
         st.success('Explicação gerada com sucesso!')
-        st.subheader('Explicação Gerada:')
-        st.write(resposta.content)
-        st.download_button(
-            label="Baixar Explicação",
-            data=resposta.content,
-            file_name="explicacao_livro.txt",
-            mime="text/plain"
-        )
-        with st.spinner('Gerando áudio...'):
-        # Inicializa cliente OpenAI (opcional se já estiver com a env var)
-            client = openai.OpenAI(api_key=openai_key)
 
-        # Gera o áudio com a voz desejada
+# Mostrar Explicação
+if 'explicacao' in st.session_state:
+    explicacao = st.session_state['explicacao']
+    st.subheader('Explicação Gerada:')
+    st.write(explicacao)
+
+    st.download_button(
+        label="Baixar Explicação",
+        data=explicacao,
+        file_name="explicacao_livro.txt",
+        mime="text/plain"
+    )
+
+    if st.button('Gerar Áudio'):
+        with st.spinner('Gerando áudio...'):
+            client = openai.OpenAI(api_key=openai_key)
             audio_response = client.audio.speech.create(
-                model="tts-1",  # ou "tts-1-hd" para mais qualidade
-                voice="onyx",   # vozes disponíveis: "nova", "alloy", "echo", "fable", "onyx", "shimmer"
-                input=resposta.content
+                model="tts-1",
+                voice="onyx",
+                input=explicacao
             )
-            # Salva em um arquivo temporário
+
             temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
             temp_audio_path = Path(temp_audio.name)
             temp_audio.write(audio_response.content)
             temp_audio.close()
-            # Player no Streamlit
-            st.audio(str(temp_audio_path), format='audio/mp3')
 
-            # Botão para download
+            st.audio(str(temp_audio_path), format='audio/mp3')
             with open(temp_audio_path, "rb") as file:
                 st.download_button(
                     label="Baixar Áudio",
